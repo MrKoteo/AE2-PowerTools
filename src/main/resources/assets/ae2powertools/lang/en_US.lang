@@ -1,0 +1,47 @@
+# Items
+item.ae2powertools.network_health_scanner.name=Network Health Scanner
+item.ae2powertools.network_health_scanner.tip1=Right-click on network to start scan
+item.ae2powertools.network_health_scanner.tip2=Right-click in air to open results
+item.ae2powertools.network_health_scanner.tip3=Sneak + Right-click to toggle overlay (%s)
+item.ae2powertools.network_health_scanner.overlay_on=ON
+item.ae2powertools.network_health_scanner.overlay_off=OFF
+item.ae2powertools.network_health_scanner.overlay_enabled=Overlay enabled
+item.ae2powertools.network_health_scanner.overlay_disabled=Overlay disabled
+item.ae2powertools.network_health_scanner.started=Network scan started...
+item.ae2powertools.network_health_scanner.no_network=No AE2 network found at this location.
+item.ae2powertools.network_health_scanner.no_session=No active scan session. Right-click on a network to start.
+item.ae2powertools.network_health_scanner.already_scanning=A scan is already in progress.
+item.ae2powertools.network_health_scanner.cancelled=Scan cancelled after processing %d nodes.
+
+item.ae2powertools.priority_tuner.name=Priority Tuner
+item.ae2powertools.priority_tuner.stored=Stored Priority: %s
+item.ae2powertools.priority_tuner.tip1=Sneak + Right-click to open priority GUI
+item.ae2powertools.priority_tuner.tip2=Right-click to apply stored priority
+item.ae2powertools.priority_tuner.tip3=Off-hand: Auto-apply on block placement
+
+ae2powertools.priority.applied=Applied priority %d at [%d, %d, %d]
+
+# GUI - Priority Tuner
+gui.ae2powertools.priority_tuner.title=Priority Tuner
+
+# GUI - Network Health Scanner
+gui.ae2powertools.scanner.title=Network Health Scanner
+gui.ae2powertools.scanner.select_all=Select All
+gui.ae2powertools.scanner.deselect_all=Deselect All
+gui.ae2powertools.scanner.cancel=Cancel
+gui.ae2powertools.scanner.dimension_format=%s (DIM %d)
+gui.ae2powertools.scanner.tab_loops=Loops (%d)
+gui.ae2powertools.scanner.tab_chunks=Non-chunkloaded (%d)
+gui.ae2powertools.scanner.chunk_entry=Chunk [%d, %d]
+
+# Scanner Status Messages
+ae2powertools.scanner.session_started=Network scan started...
+ae2powertools.scanner.status.no_pathing_grid=No pathing grid found in network.
+ae2powertools.scanner.status.scanning_controllerless=Scanning controllerless network...
+ae2powertools.scanner.status.scanning_controller=Scanning from controller...
+ae2powertools.scanner.status.no_start=No starting node found.
+ae2powertools.scanner.status.error=Error during scan: %s
+ae2powertools.scanner.status.too_large=Network too large (>%d nodes). Scan stopped.
+ae2powertools.scanner.status.no_issues=Scan complete: %d nodes, no issues found.
+ae2powertools.scanner.status.found=Scan complete: %d loops, %d chunks.
+ae2powertools.scanner.status.scanning=Scanning... %d nodes processed.

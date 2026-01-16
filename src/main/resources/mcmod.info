@@ -1,0 +1,16 @@
+[
+{
+  "modid": "ae2powertools",
+  "name": "AE2 PowerTools",
+  "description": "Adds powerful diagnostic and configuration tools for Applied Energistics 2 networks.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Aedial"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": ["appliedenergistics2"]
+}
+]

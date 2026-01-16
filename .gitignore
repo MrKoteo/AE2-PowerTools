@@ -1,0 +1,49 @@
+# Misc
+*.zip
+TODO.md
+
+# Gradle
+.gradle/
+build/
+out/
+bin/
+
+# Gradle Wrapper - keep the wrapper jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# ForgeGradle
+run/
+logs/
+crash-reports/
+
+# Eclipse
+.classpath
+.project
+.settings/
+*.launch
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# macOS
+.DS_Store
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
