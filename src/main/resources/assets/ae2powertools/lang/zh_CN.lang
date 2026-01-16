@@ -14,9 +14,9 @@ item.ae2powertools.network_health_scanner.already_scanning=已有扫描正在进
 item.ae2powertools.network_health_scanner.cancelled=扫描已取消，已处理%d个节点。
 
 item.ae2powertools.priority_tuner.name=优先级调节器
-item.ae2powertools.priority_tuner.stored=已存储优先级：%s
+item.ae2powertools.priority_tuner.stored=已储存优先级：%s
 item.ae2powertools.priority_tuner.tip1=潜行+右击以打开优先级GUI
-item.ae2powertools.priority_tuner.tip2=右击以应用存储的优先级
+item.ae2powertools.priority_tuner.tip2=右击以应用储存的优先级
 item.ae2powertools.priority_tuner.tip3=副手持有时：放置方块时自动应用
 
 ae2powertools.priority.applied=已将优先级%d应用于[%d, %d, %d]
