@@ -8,6 +8,8 @@ A collection of handy utility tools for Applied Energistics 2 network management
 A diagnostic tool for detecting network issues:
 - **Loop Detection**: Scans your AE2 network to find cable loops that may cause network instability
 - **Non-Chunkloaded Chunks Detection**: Identifies network components in non-chunkloaded chunks
+- **Channel Chokepoints**: Finds locations where channel demand exceeds cable capacity, with per-direction flow breakdown
+- **Missing Channels**: Lists devices that require a channel but couldn't get one
 - **Visual Overlay**: Shows directional arrows pointing to problem locations
 - **Interactive GUI**: Browse and select detected issues, organized by dimension
 

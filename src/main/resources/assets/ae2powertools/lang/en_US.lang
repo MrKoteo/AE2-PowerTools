@@ -32,7 +32,10 @@ gui.ae2powertools.scanner.cancel=Cancel
 gui.ae2powertools.scanner.dimension_format=%s (DIM %d)
 gui.ae2powertools.scanner.tab_loops=Loops (%d)
 gui.ae2powertools.scanner.tab_chunks=Non-chunkloaded (%d)
+gui.ae2powertools.scanner.tab_chokepoints=Chokepoints (%d)
+gui.ae2powertools.scanner.tab_missing=Missing channels (%d)
 gui.ae2powertools.scanner.chunk_entry=Chunk [%d, %d]
+gui.ae2powertools.scanner.choke_entry=%d/%d channels
 
 # Scanner Status Messages
 ae2powertools.scanner.session_started=Network scan started...
@@ -42,6 +45,10 @@ ae2powertools.scanner.status.scanning_controller=Scanning from controller...
 ae2powertools.scanner.status.no_start=No starting node found.
 ae2powertools.scanner.status.error=Error during scan: %s
 ae2powertools.scanner.status.too_large=Network too large (>%d nodes). Scan stopped.
-ae2powertools.scanner.status.no_issues=Scan complete: %d nodes, no issues found.
-ae2powertools.scanner.status.found=Scan complete: %d loops, %d chunks.
+ae2powertools.scanner.status.no_issues=Scan complete: %d nodes analyzed, no issues found.
+ae2powertools.scanner.status.found_issues=Scan complete: %d nodes analyzed, found issues.
 ae2powertools.scanner.status.scanning=Scanning... %d nodes processed.
+
+# Channel Chokepoint Tab
+ae2powertools.scanner.channel.no_controller=Cannot analyze channels: no controller found.
+ae2powertools.scanner.channel.controllerless=Cannot analyze channels: network has no controller.

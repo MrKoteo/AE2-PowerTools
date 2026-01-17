@@ -24,7 +24,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import com.ae2powertools.ItemRegistry;
 import com.ae2powertools.client.BlockHighlightRenderer;
 import com.ae2powertools.features.scanner.ScannerClientState.ChunkLocationClient;
+import com.ae2powertools.features.scanner.ScannerClientState.ChokeLocationClient;
+import com.ae2powertools.features.scanner.ScannerClientState.ConnectionFlowClient;
 import com.ae2powertools.features.scanner.ScannerClientState.LoopLocationClient;
+import com.ae2powertools.features.scanner.ScannerClientState.MissingDeviceClient;
 import com.ae2powertools.features.scanner.ScannerClientState.Tab;
 
 
@@ -33,6 +36,10 @@ import com.ae2powertools.features.scanner.ScannerClientState.Tab;
  */
 @SideOnly(Side.CLIENT)
 public class ScannerRenderer {
+
+    // ========== Distance Limits ==========
+    private static final double WIREFRAME_MAX_DISTANCE = 50.0;  // Max distance for wireframe rendering
+    private static final double FLOATING_TEXT_MAX_DISTANCE = 10.0;  // Max distance for floating text
 
     // ========== Overlay Constants ==========
     private static final int PADDING_EXTERNAL = 5;
@@ -58,10 +65,17 @@ public class ScannerRenderer {
     private static final boolean GRADIENT_FRONT_TO_BACK = true;
     private static final boolean ACCENTUATE_BACK = true;
 
+    // ========== World Text Rendering ==========
+    private static final float WORLD_TEXT_SCALE = 0.02f;
+
     // Loop color (red)
     private static final int LOOP_COLOR = 0xFF4444;
     // Chunk color (orange)
     private static final int CHUNK_COLOR = 0xFFAA00;
+    // Missing channel color (red/magenta)
+    private static final int MISSING_COLOR = 0xFF6666;
+    // Chokepoint color (cyan/blue)
+    private static final int CHOKE_COLOR = 0x66AAFF;
 
     @SubscribeEvent
     public void onRenderOverlay(RenderGameOverlayEvent.Post event) {
@@ -93,7 +107,7 @@ public class ScannerRenderer {
                 lines.add(loc.description + " " + posStr + ": " + distanceStr);
                 colors.add(LOOP_COLOR);
             }
-        } else {
+        } else if (currentTab == Tab.UNLOADED_CHUNKS) {
             List<ChunkLocationClient> selectedInDim = ScannerClientState.getSelectedChunkLocationsInDimension(
                 mc.player.dimension);
             if (selectedInDim.isEmpty()) return;
@@ -105,6 +119,33 @@ public class ScannerRenderer {
                     + ": " + distanceStr;
                 lines.add(text);
                 colors.add(CHUNK_COLOR);
+            }
+        } else if (currentTab == Tab.MISSING_CHANNELS) {
+            List<MissingDeviceClient> selectedInDim = ScannerClientState.getSelectedMissingLocationsInDimension(
+                mc.player.dimension);
+            if (selectedInDim.isEmpty()) return;
+
+            for (MissingDeviceClient loc : selectedInDim) {
+                double distance = loc.getDistanceFrom(playerPos);
+                String distanceStr = formatDistance(distance);
+                String posStr = String.format("[%d, %d, %d]", loc.pos.getX(), loc.pos.getY(), loc.pos.getZ());
+                lines.add(loc.getDisplayName() + " " + posStr + ": " + distanceStr);
+                colors.add(MISSING_COLOR);
+            }
+        } else {
+            List<ChokeLocationClient> selectedInDim = ScannerClientState.getSelectedChokeLocationsInDimension(
+                mc.player.dimension);
+            if (selectedInDim.isEmpty()) return;
+
+            for (ChokeLocationClient loc : selectedInDim) {
+                double distance = loc.getDistanceFrom(playerPos);
+                String distanceStr = formatDistance(distance);
+                String posStr = String.format("[%d, %d, %d]", loc.pos.getX(), loc.pos.getY(), loc.pos.getZ());
+                String channelStr = loc.getChannelString();
+                int excess = loc.getExcessChannels();
+                String excessStr = excess > 0 ? " (-" + excess + ")" : "";
+                lines.add(loc.description + " " + posStr + " " + channelStr + excessStr + ": " + distanceStr);
+                colors.add(CHOKE_COLOR);
             }
         }
 
@@ -154,60 +195,236 @@ public class ScannerRenderer {
         int playerDim = player.dimension;
         float partialTicks = event.getPartialTicks();
         Tab currentTab = ScannerClientState.getCurrentTab();
+        BlockPos playerPos = player.getPosition();
 
         double playerX = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
         double playerY = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;
         double playerZ = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks;
 
         if (currentTab == Tab.LOOPS) {
-            // Render block outlines and arrows for selected loop locations
-            List<LoopLocationClient> selectedInDim = ScannerClientState.getSelectedLoopLocationsInDimension(playerDim);
-            if (selectedInDim.isEmpty()) return;
+            renderLoopLocations(mc, player, playerDim, playerPos, playerX, playerY, playerZ, partialTicks);
+        } else if (currentTab == Tab.UNLOADED_CHUNKS) {
+            renderChunkLocations(mc, player, playerDim, playerPos, partialTicks);
+        } else if (currentTab == Tab.MISSING_CHANNELS) {
+            renderMissingLocations(mc, player, playerDim, playerPos, playerX, playerY, playerZ, partialTicks);
+        } else {
+            renderChokeLocations(mc, player, playerDim, playerPos, playerX, playerY, playerZ, partialTicks);
+        }
+    }
 
-            // Render block outlines
-            GlStateManager.pushMatrix();
-            GlStateManager.translate(-playerX, -playerY, -playerZ);
+    /**
+     * Render loop location markers.
+     */
+    private void renderLoopLocations(Minecraft mc, EntityPlayer player, int playerDim, BlockPos playerPos,
+            double playerX, double playerY, double playerZ, float partialTicks) {
+        List<LoopLocationClient> selectedInDim = ScannerClientState.getSelectedLoopLocationsInDimension(playerDim);
+        if (selectedInDim.isEmpty()) return;
 
-            GlStateManager.disableTexture2D();
-            GlStateManager.disableLighting();
-            GlStateManager.enableBlend();
-            GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-            GlStateManager.disableDepth();
-            GlStateManager.depthMask(false);
-            GlStateManager.glLineWidth(3.0F);
+        // Render block outlines (only within wireframe distance)
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(-playerX, -playerY, -playerZ);
 
-            for (LoopLocationClient loc : selectedInDim) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+        GlStateManager.disableDepth();
+        GlStateManager.depthMask(false);
+        GlStateManager.glLineWidth(3.0F);
+
+        for (LoopLocationClient loc : selectedInDim) {
+            double distance = loc.getDistanceFrom(playerPos);
+            if (distance <= WIREFRAME_MAX_DISTANCE) {
                 BlockHighlightRenderer.renderBlockOutline(loc.pos, 1.0f, 0.27f, 0.27f, 0.8f);
             }
+        }
 
-            GlStateManager.depthMask(true);
-            GlStateManager.enableDepth();
-            GlStateManager.disableBlend();
-            GlStateManager.enableTexture2D();
-            GlStateManager.enableLighting();
-            GlStateManager.popMatrix();
+        GlStateManager.depthMask(true);
+        GlStateManager.enableDepth();
+        GlStateManager.disableBlend();
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableLighting();
+        GlStateManager.popMatrix();
 
-            // Render direction arrows
-            if (ScannerClientState.isOverlayEnabled()) {
-                for (LoopLocationClient loc : selectedInDim) {
-                    double distance = loc.getDistanceFrom(player.getPosition());
+        // Render direction arrows (for locations beyond wireframe distance)
+        if (ScannerClientState.isOverlayEnabled()) {
+            for (LoopLocationClient loc : selectedInDim) {
+                double distance = loc.getDistanceFrom(playerPos);
+                if (distance > WIREFRAME_MAX_DISTANCE) {
                     drawDirectionArrow(player, loc.pos, LOOP_COLOR, distance, partialTicks);
                 }
             }
-        } else {
-            // Render arrows for selected chunk locations (no block outlines for chunks)
-            List<ChunkLocationClient> selectedInDim = ScannerClientState.getSelectedChunkLocationsInDimension(playerDim);
-            if (selectedInDim.isEmpty()) return;
+        }
+    }
 
-            // Render direction arrows pointing to chunk centers
-            if (ScannerClientState.isOverlayEnabled()) {
-                for (ChunkLocationClient loc : selectedInDim) {
-                    BlockPos centerPos = loc.getCenterPos();
-                    double distance = loc.getDistanceFrom(player.getPosition());
-                    drawDirectionArrowYAgnostic(player, centerPos, CHUNK_COLOR, distance, partialTicks);
+    /**
+     * Render chunk location markers.
+     */
+    private void renderChunkLocations(Minecraft mc, EntityPlayer player, int playerDim, BlockPos playerPos,
+            float partialTicks) {
+        List<ChunkLocationClient> selectedInDim = ScannerClientState.getSelectedChunkLocationsInDimension(playerDim);
+        if (selectedInDim.isEmpty()) return;
+
+        // Render direction arrows pointing to chunk centers
+        if (ScannerClientState.isOverlayEnabled()) {
+            for (ChunkLocationClient loc : selectedInDim) {
+                BlockPos centerPos = loc.getCenterPos();
+                double distance = loc.getDistanceFrom(playerPos);
+                drawDirectionArrowYAgnostic(player, centerPos, CHUNK_COLOR, distance, partialTicks);
+            }
+        }
+    }
+
+    /**
+     * Render missing channel device location markers.
+     */
+    private void renderMissingLocations(Minecraft mc, EntityPlayer player, int playerDim, BlockPos playerPos,
+            double playerX, double playerY, double playerZ, float partialTicks) {
+        List<MissingDeviceClient> selectedInDim = ScannerClientState.getSelectedMissingLocationsInDimension(playerDim);
+        if (selectedInDim.isEmpty()) return;
+
+        // Render block outlines (only within wireframe distance)
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(-playerX, -playerY, -playerZ);
+
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+        GlStateManager.disableDepth();
+        GlStateManager.depthMask(false);
+        GlStateManager.glLineWidth(3.0F);
+
+        for (MissingDeviceClient loc : selectedInDim) {
+            double distance = loc.getDistanceFrom(playerPos);
+            if (distance <= WIREFRAME_MAX_DISTANCE) {
+                // Red-ish color for missing channels
+                BlockHighlightRenderer.renderBlockOutline(loc.pos, 1.0f, 0.4f, 0.4f, 0.8f);
+            }
+        }
+
+        GlStateManager.depthMask(true);
+        GlStateManager.enableDepth();
+        GlStateManager.disableBlend();
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableLighting();
+        GlStateManager.popMatrix();
+
+        // Render direction arrows (for locations beyond wireframe distance)
+        if (ScannerClientState.isOverlayEnabled()) {
+            for (MissingDeviceClient loc : selectedInDim) {
+                double distance = loc.getDistanceFrom(playerPos);
+                if (distance > WIREFRAME_MAX_DISTANCE) {
+                    drawDirectionArrow(player, loc.pos, MISSING_COLOR, distance, partialTicks);
                 }
             }
         }
+    }
+
+    /**
+     * Render chokepoint location markers with channel info.
+     */
+    private void renderChokeLocations(Minecraft mc, EntityPlayer player, int playerDim, BlockPos playerPos,
+            double playerX, double playerY, double playerZ, float partialTicks) {
+        List<ChokeLocationClient> selectedInDim = ScannerClientState.getSelectedChokeLocationsInDimension(playerDim);
+        if (selectedInDim.isEmpty()) return;
+
+        // Render block outlines and floating text (only within wireframe distance)
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(-playerX, -playerY, -playerZ);
+
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+        GlStateManager.disableDepth();
+        GlStateManager.depthMask(false);
+        GlStateManager.glLineWidth(3.0F);
+
+        for (ChokeLocationClient loc : selectedInDim) {
+            double distance = loc.getDistanceFrom(playerPos);
+            if (distance <= WIREFRAME_MAX_DISTANCE) {
+                // Cyan-ish color for chokepoints
+                BlockHighlightRenderer.renderBlockOutline(loc.pos, 0.4f, 0.67f, 1.0f, 0.8f);
+            }
+        }
+
+        GlStateManager.depthMask(true);
+        GlStateManager.enableDepth();
+        GlStateManager.disableBlend();
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableLighting();
+        GlStateManager.popMatrix();
+
+        // Render floating text for nearby chokepoints
+        for (ChokeLocationClient loc : selectedInDim) {
+            double distance = loc.getDistanceFrom(playerPos);
+            if (distance <= FLOATING_TEXT_MAX_DISTANCE) {
+                renderChokeFloatingText(mc, player, loc, playerX, playerY, playerZ, partialTicks);
+            }
+        }
+
+        // Render direction arrows (for locations beyond wireframe distance)
+        if (ScannerClientState.isOverlayEnabled()) {
+            for (ChokeLocationClient loc : selectedInDim) {
+                double distance = loc.getDistanceFrom(playerPos);
+                if (distance > WIREFRAME_MAX_DISTANCE) {
+                    drawDirectionArrow(player, loc.pos, CHOKE_COLOR, distance, partialTicks);
+                }
+            }
+        }
+    }
+
+    /**
+     * Render floating text above a chokepoint showing channel info.
+     */
+    private void renderChokeFloatingText(Minecraft mc, EntityPlayer player, ChokeLocationClient loc,
+            double playerX, double playerY, double playerZ, float partialTicks) {
+        BlockPos pos = loc.pos;
+
+        // Position text above the block
+        double textX = pos.getX() + 0.5;
+        double textY = pos.getY() + 1.5;
+        double textZ = pos.getZ() + 0.5;
+
+        // Main text: demanded/capacity
+        String mainText = loc.demandedChannels + "/" + loc.capacity;
+
+        float playerYaw = player.prevRotationYaw + (player.rotationYaw - player.prevRotationYaw) * partialTicks;
+        float playerPitch = player.prevRotationPitch + (player.rotationPitch - player.prevRotationPitch) * partialTicks;
+
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(textX - playerX, textY - playerY, textZ - playerZ);
+
+        // Billboard rotation - face the player
+        GlStateManager.rotate(-playerYaw, 0, 1, 0);
+        GlStateManager.rotate(playerPitch, 1, 0, 0);
+        GlStateManager.scale(-WORLD_TEXT_SCALE, -WORLD_TEXT_SCALE, WORLD_TEXT_SCALE);
+
+        GlStateManager.disableLighting();
+        GlStateManager.disableDepth();
+        GlStateManager.enableBlend();
+
+        // Draw main text centered
+        int mainWidth = mc.fontRenderer.getStringWidth(mainText);
+        mc.fontRenderer.drawStringWithShadow(mainText, -mainWidth / 2.0f, 0, CHOKE_COLOR | 0xFF000000);
+
+        // Draw connection flow numbers around the main text
+        int flowY = mc.fontRenderer.FONT_HEIGHT + 2;
+        for (ConnectionFlowClient flow : loc.connectionFlows) {
+            String flowText = String.valueOf(flow.demandedChannels);
+            int flowWidth = mc.fontRenderer.getStringWidth(flowText);
+
+            // Simple layout: stack flows below main text
+            mc.fontRenderer.drawStringWithShadow(flowText, -flowWidth / 2.0f, flowY, 0xFFAAAAAA);
+            flowY += mc.fontRenderer.FONT_HEIGHT + 1;
+        }
+
+        GlStateManager.enableDepth();
+        GlStateManager.enableLighting();
+        GlStateManager.disableBlend();
+
+        GlStateManager.popMatrix();
     }
 
     /**

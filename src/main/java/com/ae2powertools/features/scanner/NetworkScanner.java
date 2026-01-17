@@ -52,6 +52,10 @@ public class NetworkScanner {
     private final Set<IssueLocation> detectedLoops = new HashSet<>();
     private final Set<BlockPos> unloadedChunks = new HashSet<>();
 
+    // Channel scanner (runs after main scan completes)
+    private ChannelScanner channelScanner = null;
+    private boolean channelScanStarted = false;
+
     // Status
     private boolean isComplete = false;
     private boolean hasController = false;
@@ -139,6 +143,17 @@ public class NetworkScanner {
     public boolean processBatch() {
         if (isComplete) return true;
 
+        // Phase 1: Main network scan (loops and chunks)
+        if (!openList.isEmpty()) return processMainScan();
+
+        // Phase 2: Channel scan (runs after main scan completes)
+        return processChannelScan();
+    }
+
+    /**
+     * Process main network scan for loops and unloaded chunks.
+     */
+    private boolean processMainScan() {
         int processed = 0;
 
         while (!openList.isEmpty() && processed < MAX_NODES_PER_TICK) {
@@ -157,21 +172,55 @@ public class NetworkScanner {
         }
 
         if (openList.isEmpty()) {
-            isComplete = true;
+            // Main scan done - start channel scan if we have a controller
+            if (hasController && !channelScanStarted) {
+                channelScanStarted = true;
+                channelScanner = new ChannelScanner(grid, world);
+                statusMessage = I18n.translateToLocal("ae2powertools.scanner.status.scanning_channels");
 
-            if (detectedLoops.isEmpty() && unloadedChunks.isEmpty()) {
-                statusMessage = I18n.translateToLocalFormatted("ae2powertools.scanner.status.no_issues",
-                    nodesProcessed);
-            } else {
-                statusMessage = I18n.translateToLocalFormatted("ae2powertools.scanner.status.found",
-                    detectedLoops.size(), unloadedChunks.size());
+                return false; // Continue to channel scan phase
             }
-        } else {
-            statusMessage = I18n.translateToLocalFormatted("ae2powertools.scanner.status.scanning",
-                nodesProcessed);
+
+            // No controller or channel scan already done
+            return finishScan();
         }
 
-        return isComplete;
+        statusMessage = I18n.translateToLocalFormatted("ae2powertools.scanner.status.scanning",
+            nodesProcessed);
+
+        return false;
+    }
+
+    /**
+     * Process channel scan phase.
+     */
+    private boolean processChannelScan() {
+        if (channelScanner == null) return finishScan();
+
+        boolean channelDone = channelScanner.processBatch();
+        if (channelDone) return finishScan();
+
+        statusMessage = channelScanner.getStatusMessage();
+
+        return false;
+    }
+
+    /**
+     * Finalize scan and set final status message.
+     */
+    private boolean finishScan() {
+        isComplete = true;
+
+        int chokeCount = channelScanner != null ? channelScanner.getChokepoints().size() : 0;
+        int missingCount = channelScanner != null ? channelScanner.getMissingDevices().size() : 0;
+
+        if (detectedLoops.isEmpty() && unloadedChunks.isEmpty() && chokeCount == 0 && missingCount == 0) {
+            statusMessage = I18n.translateToLocalFormatted("ae2powertools.scanner.status.no_issues", nodesProcessed);
+        } else {
+            statusMessage = I18n.translateToLocalFormatted("ae2powertools.scanner.status.found_issues", nodesProcessed);
+        }
+
+        return true;
     }
 
     /**
@@ -190,15 +239,12 @@ public class NetworkScanner {
             if (connection == current.connectionFromParent) continue;
 
             PathNode existingPath = visitedNodes.get(neighbor);
-
             if (existingPath != null) {
                 // We found a node that was already visited through a different path.
                 // This is only a loop if we haven't already processed this edge.
                 // Since connections are bidirectional, we need to make sure we only count once.
                 // We only report the loop from the node with higher depth (later discovery).
-                if (current.depth > existingPath.depth) {
-                    addLoopLocation(connection, current, existingPath);
-                }
+                if (current.depth > existingPath.depth) addLoopLocation(connection, current, existingPath);
             } else {
                 // New node - add to open list
                 PathNode newPath = new PathNode(neighbor, current, connection, current.depth + 1);
@@ -308,6 +354,18 @@ public class NetworkScanner {
 
     public Set<BlockPos> getUnloadedChunks() {
         return unloadedChunks;
+    }
+
+    public Set<ChannelChokepoint> getChokepoints() {
+        if (channelScanner != null) return channelScanner.getChokepoints();
+
+        return new HashSet<>();
+    }
+
+    public Set<MissingChannelDevice> getMissingDevices() {
+        if (channelScanner != null) return channelScanner.getMissingDevices();
+
+        return new HashSet<>();
     }
 
     public int getNodesProcessed() {
