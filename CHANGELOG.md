@@ -8,6 +8,13 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
+## [1.2.1] - 2026-01-25
+### Fixed
+- Fix GUI not resizing properly on tab change.
+- Fix GUI not taking the full height of the tabs area.
+- Fix entries highlighting the wrong block (belonging to another entry) when selected.
+
+
 ## [1.2.0] - 2026-01-25
 ### Added
 - Add textures and recipes for both scanner and priority tuner tools.

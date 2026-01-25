@@ -45,8 +45,8 @@ ae2powertools.scanner.status.scanning_controller=Scanning from controller...
 ae2powertools.scanner.status.no_start=No starting node found.
 ae2powertools.scanner.status.error=Error during scan: %s
 ae2powertools.scanner.status.too_large=Network too large (>%d nodes). Scan stopped.
-ae2powertools.scanner.status.no_issues=Scan complete: %d nodes analyzed, no issues found.
-ae2powertools.scanner.status.found_issues=Scan complete: %d nodes analyzed, found issues.
+ae2powertools.scanner.status.no_issues=Scan complete: %d nodes analyzed.
+ae2powertools.scanner.status.found_issues=Scan complete: %d nodes analyzed.
 ae2powertools.scanner.status.scanning=Scanning... %d nodes processed.
 
 # Channel Chokepoint Tab
