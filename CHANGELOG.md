@@ -7,6 +7,12 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+
+## [1.2.0] - 2026-01-25
+### Added
+- Add textures and recipes for both scanner and priority tuner tools.
+
+
 ## [1.1.1] - 2026-01-25
 ### Fixed
 - Fix loop calculation counting multiblock parts as different components with loops.
