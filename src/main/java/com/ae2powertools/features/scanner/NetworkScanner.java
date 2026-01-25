@@ -25,6 +25,8 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.pathing.ControllerState;
 import appeng.api.networking.pathing.IPathingGrid;
 import appeng.api.util.DimensionalCoord;
+import appeng.me.cluster.IAECluster;
+import appeng.me.cluster.IAEMultiBlock;
 import appeng.tile.networking.TileController;
 
 import com.ae2powertools.AE2PowerTools;
@@ -51,6 +53,10 @@ public class NetworkScanner {
     private final Map<IGridNode, PathNode> visitedNodes = new HashMap<>();
     private final Set<IssueLocation> detectedLoops = new HashSet<>();
     private final Set<BlockPos> unloadedChunks = new HashSet<>();
+
+    // Track multiblock clusters and where they were first entered from outside.
+    // If we enter the same cluster from outside again, that indicates a loop.
+    private final Map<IAECluster, BlockPos> clusterEntryPoints = new HashMap<>();
 
     // Channel scanner (runs after main scan completes)
     private ChannelScanner channelScanner = null;
@@ -230,6 +236,8 @@ public class NetworkScanner {
      */
     private void processNode(PathNode current) {
         IGridNode node = current.node;
+        IGridHost currentHost = node.getMachine();
+        IAECluster currentCluster = getClusterOf(currentHost);
 
         for (IGridConnection connection : node.getConnections()) {
             IGridNode neighbor = connection.getOtherSide(node);
@@ -251,6 +259,23 @@ public class NetworkScanner {
                 openList.add(newPath);
                 visitedNodes.put(neighbor, newPath);
 
+                // Check for cluster entry from outside - this detects loops through multiblocks
+                IGridHost neighborHost = neighbor.getMachine();
+                IAECluster neighborCluster = getClusterOf(neighborHost);
+
+                if (neighborCluster != null && neighborCluster != currentCluster) {
+                    // Entering a cluster from outside
+                    BlockPos neighborPos = getNodePosition(neighbor);
+
+                    if (clusterEntryPoints.containsKey(neighborCluster)) {
+                        // We've already entered this cluster from a different path - that's a loop!
+                        addClusterLoopLocation(neighborPos, neighborHost);
+                    } else if (neighborPos != null) {
+                        // First entry to this cluster, record it
+                        clusterEntryPoints.put(neighborCluster, neighborPos);
+                    }
+                }
+
                 // Check if the node's chunk is loaded
                 checkChunkLoaded(neighbor);
             }
@@ -258,21 +283,54 @@ public class NetworkScanner {
     }
 
     /**
+     * Get the cluster that a grid host belongs to, or null if not a multiblock.
+     */
+    private IAECluster getClusterOf(IGridHost host) {
+        if (host instanceof IAEMultiBlock) return ((IAEMultiBlock) host).getCluster();
+
+        return null;
+    }
+
+    /**
      * Add a loop location to the detected loops set.
      * We report the location of the current node that discovered the loop-closing edge.
      */
     private void addLoopLocation(IGridConnection connection, PathNode current, PathNode existing) {
-        // Report the current node's position as the loop location
         IGridNode node = current.node;
         IGridHost host = node.getMachine();
         BlockPos pos = getNodePosition(node);
+        if (pos == null) return;
+
+        // For multiblock structures, internal connections are handled separately via cluster entry tracking.
+        // Skip if both nodes are in the same cluster - that's just internal multiblock wiring.
+        IGridHost existingHost = existing.node.getMachine();
+        IAECluster currentCluster = getClusterOf(host);
+        IAECluster existingCluster = getClusterOf(existingHost);
+
+        if (currentCluster != null && currentCluster == existingCluster) return;
+
+        int dimension = world.provider.getDimension();
+        String dimName = world.provider.getDimensionType().getName();
+
+        boolean isLoaded = world.isBlockLoaded(pos);
+        IBlockState blockState = isLoaded ? world.getBlockState(pos) : Blocks.AIR.getDefaultState();
+
+        String description = getNodeDescription(host);
+        IssueLocation loopLoc = new IssueLocation(pos, dimension, dimName, blockState, isLoaded, description);
+        detectedLoops.add(loopLoc);
+    }
+
+    /**
+     * Add a loop location when we detect a second entry into a multiblock cluster.
+     * Reports the cluster block where the second cable enters.
+     */
+    private void addClusterLoopLocation(BlockPos pos, IGridHost host) {
         if (pos == null) return;
 
         int dimension = world.provider.getDimension();
         String dimName = world.provider.getDimensionType().getName();
 
         IBlockState blockState = Blocks.AIR.getDefaultState();
-        ChunkPos chunkPos = new ChunkPos(pos);
         boolean isLoaded = world.isBlockLoaded(pos);
 
         if (isLoaded) blockState = world.getBlockState(pos);
