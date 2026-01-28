@@ -8,6 +8,14 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
+## [1.2.2] - 2026-01-28
+### Fixed
+- Add missing localization for some GUI elements.
+- Fix the wireframe overlay not changing selection when changing dimensions.
+- Fix the chunk detection using the wrong dimension when matching network components to loaded chunks.
+- Fix some other tabs counting multiblock parts as different components.
+
+
 ## [1.2.1] - 2026-01-25
 ### Fixed
 - Fix GUI not resizing properly on tab change.
