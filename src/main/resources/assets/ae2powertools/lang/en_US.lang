@@ -22,14 +22,14 @@ item.ae2powertools.priority_tuner.tip2=Right-click to apply stored priority
 item.ae2powertools.priority_tuner.tip3=Off-hand: Auto-apply on block placement
 
 item.ae2powertools.cards_distributor.name=Cards Distributor
-item.ae2powertools.cards_distributor.tip1=Right-click on network to distribute cards
-item.ae2powertools.cards_distributor.tip2=Distributes from your inventory to assemblers
-item.ae2powertools.cards_distributor.tip3=Supports Molecular Assemblers (acceleration cards)
+item.ae2powertools.cards_distributor.tip1=Right-click on network to distribute cards from inventory
+item.ae2powertools.cards_distributor.tip2=Supports Molecular Assemblers (acceleration cards)
 item.ae2powertools.cards_distributor.no_network=No AE2 network found at this location.
 item.ae2powertools.cards_distributor.use_on_network=Right-click on a network component to distribute acceleration cards.
 item.ae2powertools.cards_distributor.success_accelerator=Distributed %d acceleration cards to %d assemblers.
 item.ae2powertools.cards_distributor.still_needed=Still need %d cards for %d assemblers to be fully upgraded.
 item.ae2powertools.cards_distributor.all_full=All assemblers on the network are fully upgraded!
+item.ae2powertools.cards_distributor.pulled_from_ae2=Pulled %d cards from AE2 network storage.
 
 ae2powertools.priority.applied=Applied priority %d at [%d, %d, %d]
 

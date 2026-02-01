@@ -8,9 +8,11 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
-## [1.3.0] - 2026-01-30
+## [1.3.0] - 2026-02-01
 ### Added
-- Add the Acceleration Distributor tool for AE2 networks. This tool allows players to send acceleration cards from inventory directly to any free Molecular Assembler (or compatible) in the network by right-clicking.
+- Add the Cards Distributor tool for AE2 networks. This tool allows players to send acceleration cards from inventory directly to any free Molecular Assembler (or compatible) on the network by right-clicking.
+- Add linking support via Security Station to allow the Cards Distributor to pull cards from AE2 storage when needed.
+- Add textures and recipe for the Cards Distributor tool.
 
 
 ## [1.2.2] - 2026-01-28
