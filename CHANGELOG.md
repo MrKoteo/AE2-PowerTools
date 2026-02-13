@@ -8,6 +8,14 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
+## [1.3.3] - 2026-02-11
+### Added
+- Add client config for NHS arrow and text scaling.
+
+### Changed
+- Make NHS distance text more visible.
+
+
 ## [1.3.2] - 2026-02-10
 ### Added
 - Add scan finished message to the player when a network scan is completed, showing the number of issues found in each category.

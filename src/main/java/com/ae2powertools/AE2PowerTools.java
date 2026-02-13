@@ -18,7 +18,8 @@ import com.ae2powertools.features.scanner.ScannerTickHandler;
     name = Tags.MODNAME,
     version = Tags.VERSION,
     dependencies = "required-after:appliedenergistics2@[rv6-stable-7,);",
-    acceptedMinecraftVersions = "[1.12.2]"
+    acceptedMinecraftVersions = "[1.12.2]",
+    guiFactory = "com.ae2powertools.client.PowerToolsConfigGuiFactory"
 )
 public class AE2PowerTools {
 

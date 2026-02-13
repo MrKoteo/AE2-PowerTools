@@ -34,6 +34,22 @@ item.ae2powertools.cards_distributor.pulled_from_ae2=Pulled %d cards from AE2 ne
 
 ae2powertools.priority.applied=Applied priority %d at [%d, %d, %d]
 
+# Config GUI and keys for the config factory
+ae2powertools.config.title=AE2 PowerTools Configuration
+ae2powertools.config.client=Client
+ae2powertools.config.client.scanner=Scanner Overlay
+ae2powertools.config.client.scanner.tooltip=Scanner overlay and arrow rendering settings
+ae2powertools.config.client.scanner.arrowScalePercent=Directional arrows scale
+ae2powertools.config.client.scanner.arrowScalePercent.tooltip=Percentage scale for directional arrows
+ae2powertools.config.client.scanner.textScalePercent=Arrow text scale
+ae2powertools.config.client.scanner.textScalePercent.tooltip=Percentage scale for text labels on directional arrows
+ae2powertools.config.client.scanner.adaptiveTextScale=Adaptive text scaling
+ae2powertools.config.client.scanner.adaptiveTextScale.tooltip=Automatically scale arrow text size based on distance to camera
+ae2powertools.config.client.scanner.adaptiveTextScaleMinPercent=Min adaptive text scale
+ae2powertools.config.client.scanner.adaptiveTextScaleMinPercent.tooltip=Minimum scale (in percent) when adaptive text scaling is applied
+ae2powertools.config.client.scanner.adaptiveTextScaleMaxPercent=Max adaptive text scale
+ae2powertools.config.client.scanner.adaptiveTextScaleMaxPercent.tooltip=Maximum scale (in percent) when adaptive text scaling is applied
+
 # GUI - Priority Tuner
 gui.ae2powertools.priority_tuner.title=Priority Tuner
 
@@ -49,6 +65,7 @@ gui.ae2powertools.scanner.tab_chokepoints=Chokepoints (%d)
 gui.ae2powertools.scanner.tab_missing=Missing channels (%d)
 gui.ae2powertools.scanner.chunk_entry=Chunk [%d, %d]
 gui.ae2powertools.scanner.choke_entry=%d/%d channels
+gui.ae2powertools.scanner.loops_info=Note: Loops are not necessarily a problem unless the network is misbehaving and other causes have been ruled out. Nonetheless, try to avoid causing loops if possible.
 
 # Scanner Status Messages
 ae2powertools.scanner.session_started=Network scan started...
