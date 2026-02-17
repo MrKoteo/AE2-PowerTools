@@ -8,6 +8,14 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
+## [1.4.0] - 2026-02-14
+### Added
+- Add Better Level Maintainer.
+  - A block that automatically maintains item quantities in your AE2 network by scheduling crafting jobs.
+  - Features multiple recipes, target quantities, batch crafting, customizable frequency, CPU management, and status indicators.
+  - Includes a detailed GUI for easy configuration and monitoring.
+
+
 ## [1.3.3] - 2026-02-11
 ### Added
 - Add client config for NHS arrow and text scaling.
