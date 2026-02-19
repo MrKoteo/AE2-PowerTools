@@ -55,6 +55,11 @@ ae2powertools.config.client.scanner.adaptiveTextScaleMinPercent.tooltip=Minimum 
 ae2powertools.config.client.scanner.adaptiveTextScaleMaxPercent=Max adaptive text scale
 ae2powertools.config.client.scanner.adaptiveTextScaleMaxPercent.tooltip=Maximum scale (in percent) when adaptive text scaling is applied
 
+ae2powertools.config.client.maintainer=Maintainer
+ae2powertools.config.client.maintainer.tooltip=Level Maintainer GUI settings
+ae2powertools.config.client.maintainer.useTallView=Use tall view
+ae2powertools.config.client.maintainer.useTallView.tooltip=Use tall view (single column) instead of compact view (three columns)
+
 # GUI - Priority Tuner
 gui.ae2powertools.priority_tuner.title=Priority Tuner
 
@@ -121,6 +126,15 @@ gui.ae2powertools.maintainer.state.stalled=Stalled - Waiting for free machine(s)
 gui.ae2powertools.maintainer.state.error=Error
 gui.ae2powertools.maintainer.state.post_error=Output Error (no space for crafted items)
 
+# GUI - Maintainer Short States (for compact tall view entries)
+gui.ae2powertools.maintainer.state.short.disabled=Disabled
+gui.ae2powertools.maintainer.state.short.idle=Idle
+gui.ae2powertools.maintainer.state.short.scheduled=Scheduled
+gui.ae2powertools.maintainer.state.short.running=Running
+gui.ae2powertools.maintainer.state.short.stalled=Stalled
+gui.ae2powertools.maintainer.state.short.error=Error
+gui.ae2powertools.maintainer.state.short.post_error=Output Error
+
 # GUI - Maintainer Entry
 gui.ae2powertools.maintainer.frequency=Runs every %s
 
@@ -161,6 +175,12 @@ gui.ae2powertools.maintainer.modal.frequency_use=Use buttons to adjust
 
 # GUI - Maintainer Recipe Selector
 gui.ae2powertools.maintainer.selector.title=Select Recipe
+
+# GUI - Maintainer Style Toggle
+gui.ae2powertools.maintainer.style.title=View Style
+gui.ae2powertools.maintainer.style.tall=Tall view
+gui.ae2powertools.maintainer.style.small=Compact view
+gui.ae2powertools.maintainer.style.click_toggle=Click to toggle
 
 # Maintainer Error Messages
 gui.ae2powertools.maintainer.error.no_recipe=No pattern found for this item

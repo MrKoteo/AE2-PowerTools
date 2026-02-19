@@ -8,7 +8,16 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
-## [1.4.0] - 2026-02-14
+## [1.4.1] - 2026-02-18
+### Added
+- Add tall/compact view toggle for the Better Level Maintainer GUI.
+  - Tall view shows one recipe per row with full item icons, state indicators, and detailed info.
+  - Compact view shows three recipes per row in a more condensed layout.
+  - Toggle button on the left side of the GUI, similar to AE2's terminal style button.
+  - View preference is persisted in client config.
+
+
+## [1.4.0] - 2026-02-17
 ### Added
 - Add Better Level Maintainer.
   - A block that automatically maintains item quantities in your AE2 network by scheduling crafting jobs.

@@ -53,6 +53,9 @@ import com.ae2powertools.AE2PowerTools;
 /**
  * Tile entity for the Better Level Maintainer block.
  * Manages multiple crafting entries to maintain item quantities in the network.
+ *
+ * FIXME: After restarting, entries start in Not enough items to start crafting,
+ *        and sometimes stay stuck there.
  */
 public class TileBetterLevelMaintainer extends AEBaseTile
         implements ITickable, IActionHost, IGridProxyable, ICraftingRequester {

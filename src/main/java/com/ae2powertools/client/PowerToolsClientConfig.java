@@ -20,6 +20,25 @@ public class PowerToolsClientConfig {
     @Config.LangKey("ae2powertools.config.client.scanner")
     public static final Scanner scanner = new Scanner();
 
+    @Config.LangKey("ae2powertools.config.client.maintainer")
+    public static final Maintainer maintainer = new Maintainer();
+
+    public static class Maintainer {
+        @Config.LangKey("ae2powertools.config.client.maintainer.useTallView")
+        public boolean useTallView = false;
+
+        public boolean isUseTallView() {
+            return useTallView;
+        }
+
+        public void setUseTallView(boolean value) {
+            if (useTallView == value) return;
+
+            useTallView = value;
+            ConfigManager.sync(Tags.MODID, Config.Type.INSTANCE);
+        }
+    }
+
     public static class Scanner {
         @Config.LangKey("ae2powertools.config.client.scanner.arrowScalePercent")
         @Config.RangeInt(min = 10, max = 1000)

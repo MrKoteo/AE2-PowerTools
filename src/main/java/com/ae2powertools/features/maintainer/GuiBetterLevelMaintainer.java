@@ -1,5 +1,6 @@
 package com.ae2powertools.features.maintainer;
 
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,15 +17,18 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import appeng.api.storage.data.IAEItemStack;
 import appeng.util.ReadableNumberConverter;
+import appeng.util.Platform;
 
 import com.ae2powertools.AE2PowerTools;
 import com.ae2powertools.Tags;
+import com.ae2powertools.client.PowerToolsClientConfig;
 import com.ae2powertools.features.maintainer.MaintainerState;
 import com.ae2powertools.network.PacketSelectRecipe;
 import com.ae2powertools.network.PacketUpdateMaintainerEntry;
@@ -39,6 +43,8 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
 
     private static final ResourceLocation BACKGROUND = new ResourceLocation(
             Tags.MODID, "textures/guis/maintainer_gui.png");
+    private static final ResourceLocation BACKGROUND_TALL = new ResourceLocation(
+            Tags.MODID, "textures/guis/maintainer_gui_tall.png");
     private static final ResourceLocation MODAL_BACKGROUND = new ResourceLocation(
             Tags.MODID, "textures/guis/maintainer_modal.png");
     private static final ResourceLocation SELECTOR_BACKGROUND = new ResourceLocation(
@@ -70,8 +76,21 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
     private static final int SEARCH_WIDTH = 80;
     private static final int SEARCH_HEIGHT = 12;
 
-    // Status bar
+    // Status bar (small view)
     private static final int STATUS_Y = 163;
+
+    // Tall view constants
+    private static final int TALL_GUI_WIDTH = 238;
+    private static final int TALL_GUI_BASE_HEIGHT = 92;
+    private static final int TALL_SLICE_START_Y = 19;
+    private static final int TALL_SLICE_END_Y = 42;
+    private static final int TALL_SLICE_HEIGHT = TALL_SLICE_END_Y - TALL_SLICE_START_Y; // 23 pixels
+    private static final int TALL_ENTRY_HEIGHT = TALL_SLICE_HEIGHT;
+    private static final int TALL_MARGIN = 10; // margin from screen edges
+    private static final int TALL_STATUS_OFFSET = 18; // offset from bottom of GUI to status bar
+
+    // Style toggle button position (left of GUI, consistent position)
+    private static final int STYLE_BUTTON_SIZE = 16;
 
     // Modal dimensions
     private static final int MODAL_WIDTH = 176;
@@ -116,15 +135,43 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
     private boolean selectorDragging = false;
     private int selectorHoveredSlot = -1;
 
+    // === TALL MODE STATE ===
+    private boolean useTallView;
+    private int tallVisibleRows = 6;
+    private int tallScrollbarHeight;
+    private int styleButtonX, styleButtonY;
+    private boolean styleButtonHovered = false;
+    private boolean jeiEnabled;
+
     public GuiBetterLevelMaintainer(ContainerBetterLevelMaintainer container) {
         super(container);
         this.container = container;
+        this.useTallView = PowerToolsClientConfig.maintainer.isUseTallView();
+        this.jeiEnabled = Platform.isModLoaded("jei");
         this.xSize = GUI_WIDTH;
         this.ySize = GUI_HEIGHT;
     }
 
     @Override
     public void initGui() {
+        // Calculate tall mode dimensions first
+        if (useTallView) {
+            // Calculate how many rows fit on screen
+            int availableHeight = this.height - TALL_MARGIN * 2;
+            // Subtract header (19px) and footer area for status bar
+            int headerHeight = TALL_SLICE_START_Y;
+            int footerHeight = TALL_GUI_BASE_HEIGHT - TALL_SLICE_END_Y;
+            int contentHeight = availableHeight - headerHeight - footerHeight;
+            // +1 because the footer contains the last entry row (without separator line)
+            tallVisibleRows = Math.max(3, contentHeight / TALL_SLICE_HEIGHT) + 1;
+            this.ySize = headerHeight + ((tallVisibleRows - 1) * TALL_SLICE_HEIGHT) + footerHeight;
+            this.xSize = TALL_GUI_WIDTH;
+            tallScrollbarHeight = tallVisibleRows * TALL_SLICE_HEIGHT - 2;
+        } else {
+            this.ySize = GUI_HEIGHT;
+            this.xSize = GUI_WIDTH;
+        }
+
         super.initGui();
 
         searchField = new GuiTextField(0, fontRenderer, guiLeft + SEARCH_X, guiTop + SEARCH_Y, SEARCH_WIDTH, SEARCH_HEIGHT);
@@ -138,11 +185,25 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
         selectorLeft = (width - SELECTOR_WIDTH) / 2;
         selectorTop = (height - SELECTOR_HEIGHT) / 2;
 
+        // Style toggle button position (left of GUI, aligned with header)
+        styleButtonX = guiLeft - STYLE_BUTTON_SIZE - 2;
+        styleButtonY = guiTop + SEARCH_Y;
+
         // Re-init modal fields if visible
         if (modalVisible) initModalFields();
         if (selectorVisible) initSelectorFields();
 
         updateScrollLimits();
+    }
+
+    /**
+     * Toggles between small and tall view modes.
+     */
+    private void toggleViewStyle() {
+        useTallView = !useTallView;
+        PowerToolsClientConfig.maintainer.setUseTallView(useTallView);
+        scrollOffset = 0;
+        initGui();
     }
 
     @Override
@@ -161,8 +222,14 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
 
     private void updateScrollLimits() {
         TileBetterLevelMaintainer maintainer = container.getMaintainer();
-        int totalRows = (maintainer.getOpenSlots() + COLUMNS - 1) / COLUMNS;
-        maxScroll = Math.max(0, totalRows - VISIBLE_ROWS);
+        if (useTallView) {
+            // In tall mode, 1 entry per row
+            maxScroll = Math.max(0, maintainer.getOpenSlots() - tallVisibleRows);
+        } else {
+            // In small mode, COLUMNS entries per row
+            int totalRows = (maintainer.getOpenSlots() + COLUMNS - 1) / COLUMNS;
+            maxScroll = Math.max(0, totalRows - VISIBLE_ROWS);
+        }
         scrollOffset = Math.min(scrollOffset, maxScroll);
     }
 
@@ -194,13 +261,75 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
     @Override
     protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-        mc.getTextureManager().bindTexture(BACKGROUND);
-        drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, ySize);
+
+        if (useTallView) {
+            drawTallBackground();
+        } else {
+            mc.getTextureManager().bindTexture(BACKGROUND);
+            drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, ySize);
+        }
+
+        // Draw style toggle button
+        drawStyleButton(mouseX, mouseY);
 
         searchField.drawTextBox();
-        drawEntries(mouseX, mouseY);
-        drawScrollbar();
-        drawStatusBar();
+        if (useTallView) {
+            drawEntriesTall(mouseX, mouseY);
+            drawScrollbarTall();
+            drawStatusBarTall();
+        } else {
+            drawEntries(mouseX, mouseY);
+            drawScrollbar();
+            drawStatusBar();
+        }
+    }
+
+    /**
+     * Draw the tall GUI background by slicing and duplicating texture regions.
+     */
+    private void drawTallBackground() {
+        mc.getTextureManager().bindTexture(BACKGROUND_TALL);
+
+        // Draw header (0 to TALL_SLICE_START_Y)
+        drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, TALL_SLICE_START_Y);
+
+        // Draw entry slices with separators (footer provides the last row without separator)
+        for (int row = 0; row < tallVisibleRows - 1; row++) {
+            int y = guiTop + TALL_SLICE_START_Y + row * TALL_SLICE_HEIGHT;
+            drawTexturedModalRect(guiLeft, y, 0, TALL_SLICE_START_Y, xSize, TALL_SLICE_HEIGHT);
+        }
+
+        // Draw footer (last entry without separator + status bar)
+        int footerY = guiTop + TALL_SLICE_START_Y + (tallVisibleRows - 1) * TALL_SLICE_HEIGHT;
+        int footerHeight = TALL_GUI_BASE_HEIGHT - TALL_SLICE_END_Y;
+        drawTexturedModalRect(guiLeft, footerY, 0, TALL_SLICE_END_Y, xSize, footerHeight);
+    }
+
+    /**
+     * Draw the style toggle button (small/tall).
+     */
+    private void drawStyleButton(int mouseX, int mouseY) {
+        styleButtonHovered = mouseX >= styleButtonX && mouseX < styleButtonX + STYLE_BUTTON_SIZE &&
+                             mouseY >= styleButtonY && mouseY < styleButtonY + STYLE_BUTTON_SIZE;
+
+        // Draw button background using AE2 states texture
+        mc.getTextureManager().bindTexture(new ResourceLocation("appliedenergistics2", "textures/guis/states.png"));
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+
+        // Standard AE2 button frame (bottom-right cell of the 16x16 grid in states.png)
+        drawTexturedModalRect(styleButtonX, styleButtonY, 240, 240, STYLE_BUTTON_SIZE, STYLE_BUTTON_SIZE);
+
+        // Terminal style icon: row 13 in states.png, column 0 = tall, column 1 = compact
+        int iconU = useTallView ? 0 : 16;
+        int iconV = 13 * 16;
+        drawTexturedModalRect(styleButtonX, styleButtonY, iconU, iconV, STYLE_BUTTON_SIZE, STYLE_BUTTON_SIZE);
+
+        // Hover highlight overlay
+        if (styleButtonHovered) {
+            drawRect(styleButtonX + 1, styleButtonY + 1,
+                    styleButtonX + STYLE_BUTTON_SIZE - 1, styleButtonY + STYLE_BUTTON_SIZE - 1,
+                    0x40FFFFFF);
+        }
     }
 
     @Override
@@ -210,9 +339,37 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
 
         // Only draw main GUI tooltips if no modal is visible
         if (!modalVisible && !selectorVisible) {
-            drawEntryTooltips(mouseX, mouseY);
+            if (useTallView) {
+                drawEntryTooltipsTall(mouseX, mouseY);
+            } else {
+                drawEntryTooltips(mouseX, mouseY);
+            }
+
             drawStatusBarTooltips(mouseX, mouseY);
+            drawStyleButtonTooltip(mouseX, mouseY);
         }
+    }
+
+    /**
+     * Draw tooltip for the style toggle button.
+     */
+    private void drawStyleButtonTooltip(int mouseX, int mouseY) {
+        if (!styleButtonHovered) return;
+
+        List<String> tooltip = new ArrayList<>();
+        tooltip.add(I18n.format("gui.ae2powertools.maintainer.style.title"));
+        if (useTallView) {
+            tooltip.add("§7" + I18n.format("gui.ae2powertools.maintainer.style.tall") + "§r");
+        } else {
+            tooltip.add("§7" + I18n.format("gui.ae2powertools.maintainer.style.small") + "§r");
+        }
+        tooltip.add("§7" + I18n.format("gui.ae2powertools.maintainer.style.click_toggle") + "§r");
+
+        // Undo the foreground layer translation since the button is outside the GUI area
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(-guiLeft, -guiTop, 0);
+        GuiUtils.drawHoveringText(tooltip, mouseX, mouseY, width, height, -1, fontRenderer);
+        GlStateManager.popMatrix();
     }
 
     // ==================== ENTRY MODAL ====================
@@ -687,7 +844,8 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
     }
 
     private void drawStatusBarTooltips(int mouseX, int mouseY) {
-        if (mouseY < guiTop + STATUS_Y || mouseY > guiTop + STATUS_Y + 12) return;
+        int statusY = useTallView ? guiTop + ySize - TALL_STATUS_OFFSET : guiTop + STATUS_Y;
+        if (mouseY < statusY || mouseY > statusY + 12) return;
 
         List<String> tooltip = new ArrayList<>();
 
@@ -706,6 +864,139 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
         }
 
         if (!tooltip.isEmpty()) drawHoveringText(tooltip, mouseX - guiLeft, mouseY - guiTop);
+    }
+
+    // ==================== TALL MODE DRAWING ====================
+
+    /**
+     * Draw entries in tall mode (single column, more detailed).
+     */
+    private void drawEntriesTall(int mouseX, int mouseY) {
+        TileBetterLevelMaintainer maintainer = container.getMaintainer();
+        String searchTerm = searchField.getText().toLowerCase();
+        hoveredEntryIndex = -1;
+
+        boolean checkHover = !modalVisible && !selectorVisible;
+
+        int displayIndex = 0;
+        for (int entryIdx = scrollOffset; entryIdx < maintainer.getOpenSlots(); entryIdx++) {
+            MaintainerEntry entry = maintainer.getEntry(entryIdx);
+            if (entry == null) continue;
+
+            if (!searchTerm.isEmpty() && entry.hasRecipe()) {
+                String name = entry.getTargetItemStack().getDisplayName().toLowerCase();
+                if (!name.contains(searchTerm)) continue;
+            }
+
+            if (displayIndex >= tallVisibleRows) break;
+
+            int x = guiLeft + ENTRY_START_X;
+            int y = guiTop + TALL_SLICE_START_Y + displayIndex * TALL_SLICE_HEIGHT;
+            int entryW = xSize - ENTRY_START_X * 2 - SCROLLBAR_WIDTH - 4;
+
+            boolean hovered = checkHover && mouseX >= x && mouseX < x + entryW &&
+                    mouseY >= y && mouseY < y + TALL_SLICE_HEIGHT;
+            if (hovered) hoveredEntryIndex = entryIdx;
+
+            // Background
+            int bgColor = entry.getState().getBackgroundColor();
+            if (bgColor != 0) drawRect(x, y, x + entryW, y + TALL_SLICE_HEIGHT - 1, bgColor);
+            if (hovered) drawRect(x, y, x + entryW, y + TALL_SLICE_HEIGHT - 1, 0x40FFFFFF);
+
+            // Content
+            if (entry.hasRecipe()) {
+                // Draw full-size item icon (16x16)
+                ItemStack stack = entry.getTargetItemStack();
+
+                GlStateManager.enableDepth();
+                RenderHelper.enableGUIStandardItemLighting();
+                itemRender.renderItemAndEffectIntoGUI(stack, x + 2, y + 2);
+                RenderHelper.disableStandardItemLighting();
+                GlStateManager.disableDepth();
+
+                // Item name
+                String name = stack.getDisplayName();
+                int nameMaxW = entryW - 24 - 100;
+                if (fontRenderer.getStringWidth(name) > nameMaxW) {
+                    name = fontRenderer.trimStringToWidth(name, nameMaxW - 6) + "...";
+                }
+                fontRenderer.drawString(name, x + 22, y + 3, entry.isEnabled() ? 0x000000 : 0x808080);
+
+                // State indicator (short form to avoid overlapping with frequency)
+                MaintainerState state = entry.getState();
+                String stateText = I18n.format("gui.ae2powertools.maintainer.state.short." + state.name().toLowerCase());
+                int stateColor = state.getTextColor();
+                fontRenderer.drawString(stateText, x + 22, y + 12, stateColor);
+
+                // Quantity and frequency on the right
+                String qtyText = String.format("%s / %s",
+                        ReadableNumberConverter.INSTANCE.toWideReadableForm(entry.getCurrentQuantity()),
+                        ReadableNumberConverter.INSTANCE.toWideReadableForm(entry.getTargetQuantity()));
+                int qtyX = x + entryW - fontRenderer.getStringWidth(qtyText) - 2;
+                fontRenderer.drawString(qtyText, qtyX, y + 3, entry.isEnabled() ? 0x000000 : 0x808080);
+
+                String freqText = entry.formatFrequency();
+                int freqX = x + entryW - fontRenderer.getStringWidth(freqText) - 2;
+                fontRenderer.drawString(freqText, freqX, y + 12, 0x606060);
+            } else {
+                // Empty slot text
+                fontRenderer.drawString(I18n.format("gui.ae2powertools.maintainer.tooltip.empty"),
+                        x + 4, y + 7, 0x808080);
+            }
+
+            displayIndex++;
+        }
+    }
+
+    /**
+     * Draw scrollbar in tall mode.
+     */
+    private void drawScrollbarTall() {
+        int x = guiLeft + SCROLLBAR_X;
+        int y = guiTop + TALL_SLICE_START_Y;
+
+        mc.getTextureManager().bindTexture(SCROLLBAR_TEXTURE);
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+
+        if (maxScroll <= 0) {
+            drawTexturedModalRect(x, y, 232, 0, SCROLLBAR_WIDTH, 15);
+        } else {
+            int offset = scrollOffset * (tallScrollbarHeight - 15) / maxScroll;
+            drawTexturedModalRect(x, y + offset, 232, 0, SCROLLBAR_WIDTH, 15);
+        }
+    }
+
+    /**
+     * Draw status bar in tall mode.
+     */
+    private void drawStatusBarTall() {
+        int statusY = guiTop + ySize - TALL_STATUS_OFFSET;
+        int halfW = (xSize - 16) / 2;
+        int leftX = guiLeft + 8;
+        int rightX = leftX + halfW;
+
+        int activeCpus = container.getActiveCpuCount();
+        int totalCpus = container.getTotalCpuCount();
+        String cpuText = String.format("§a%d§r / §8%d§r", activeCpus, totalCpus);
+        cpuTextWidth = fontRenderer.getStringWidth(String.format("%d / %d", activeCpus, totalCpus));
+        cpuX = leftX + (halfW - cpuTextWidth) / 2;
+        fontRenderer.drawStringWithShadow(cpuText, cpuX, statusY, 0xFFFFFF);
+
+        int running = container.getRunningRecipeCount();
+        int total = container.getTotalRecipeCount();
+        int failed = container.getFailedRecipeCount();
+        int postErr = container.getPostErrorRecipeCount();
+        String recipeText = String.format("§a%d§r / §8%d§r / §c%d§r / §5%d§r", running, total, failed, postErr);
+        recipeTextWidth = fontRenderer.getStringWidth(String.format("%d / %d / %d / %d", running, total, failed, postErr));
+        recipeX = rightX + (halfW - recipeTextWidth) / 2;
+        fontRenderer.drawStringWithShadow(recipeText, recipeX, statusY, 0xFFFFFF);
+    }
+
+    /**
+     * Draw entry tooltips in tall mode (same as small mode).
+     */
+    private void drawEntryTooltipsTall(int mouseX, int mouseY) {
+        drawEntryTooltips(mouseX, mouseY);
     }
 
     // ==================== INPUT HANDLING ====================
@@ -766,16 +1057,30 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
             return;
         }
 
+        // Style toggle button
+        if (mouseButton == 0 && styleButtonHovered) {
+            toggleViewStyle();
+            return;
+        }
+
         // Main GUI
         super.mouseClicked(mouseX, mouseY, mouseButton);
         searchField.mouseClicked(mouseX, mouseY, mouseButton);
 
-        // Scrollbar
+        // Scrollbar (position differs between modes)
         if (maxScroll > 0) {
-            int sbX = guiLeft + SCROLLBAR_X;
-            int sbY = guiTop + SCROLLBAR_Y;
-            if (mouseX >= sbX && mouseX < sbX + SCROLLBAR_WIDTH &&
-                    mouseY >= sbY && mouseY < sbY + SCROLLBAR_HEIGHT) {
+            int sbX, sbY, sbH;
+            if (useTallView) {
+                sbX = guiLeft + SCROLLBAR_X;
+                sbY = guiTop + TALL_SLICE_START_Y;
+                sbH = tallScrollbarHeight;
+            } else {
+                sbX = guiLeft + SCROLLBAR_X;
+                sbY = guiTop + SCROLLBAR_Y;
+                sbH = SCROLLBAR_HEIGHT;
+            }
+
+            if (mouseX >= sbX && mouseX < sbX + SCROLLBAR_WIDTH && mouseY >= sbY && mouseY < sbY + sbH) {
                 isDraggingScrollbar = true;
                 return;
             }
@@ -903,8 +1208,16 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
         }
 
         if (isDraggingScrollbar && maxScroll > 0) {
-            int sbY = guiTop + SCROLLBAR_Y;
-            float ratio = (float) (mouseY - sbY) / SCROLLBAR_HEIGHT;
+            int sbY, sbH;
+            if (useTallView) {
+                sbY = guiTop + TALL_SLICE_START_Y;
+                sbH = tallScrollbarHeight;
+            } else {
+                sbY = guiTop + SCROLLBAR_Y;
+                sbH = SCROLLBAR_HEIGHT;
+            }
+
+            float ratio = (float) (mouseY - sbY) / sbH;
             scrollOffset = Math.round(ratio * maxScroll);
             scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
 
@@ -1005,6 +1318,8 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
         TileBetterLevelMaintainer maintainer = container.getMaintainer();
         String searchTerm = searchField.getText().toLowerCase();
 
+        if (useTallView) return getEntryAtPositionTall(mouseX, mouseY, maintainer, searchTerm);
+
         int displayIndex = 0;
         for (int entryIdx = scrollOffset * COLUMNS; entryIdx < maintainer.getOpenSlots(); entryIdx++) {
             MaintainerEntry entry = maintainer.getEntry(entryIdx);
@@ -1023,6 +1338,37 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
             int y = guiTop + ENTRY_START_Y + row * ENTRY_HEIGHT;
 
             if (mouseX >= x && mouseX < x + ENTRY_WIDTH && mouseY >= y && mouseY < y + ENTRY_HEIGHT) {
+                return entryIdx;
+            }
+
+            displayIndex++;
+        }
+
+        return -1;
+    }
+
+    /**
+     * Get entry at position in tall mode.
+     */
+    private int getEntryAtPositionTall(int mouseX, int mouseY, TileBetterLevelMaintainer maintainer, String searchTerm) {
+        int displayIndex = 0;
+        int entryW = xSize - ENTRY_START_X * 2 - SCROLLBAR_WIDTH - 4;
+
+        for (int entryIdx = scrollOffset; entryIdx < maintainer.getOpenSlots(); entryIdx++) {
+            MaintainerEntry entry = maintainer.getEntry(entryIdx);
+            if (entry == null) continue;
+
+            if (!searchTerm.isEmpty() && entry.hasRecipe()) {
+                String name = entry.getTargetItemStack().getDisplayName().toLowerCase();
+                if (!name.contains(searchTerm)) continue;
+            }
+
+            if (displayIndex >= tallVisibleRows) break;
+
+            int x = guiLeft + ENTRY_START_X;
+            int y = guiTop + TALL_SLICE_START_Y + displayIndex * TALL_SLICE_HEIGHT;
+
+            if (mouseX >= x && mouseX < x + entryW && mouseY >= y && mouseY < y + TALL_SLICE_HEIGHT) {
                 return entryIdx;
             }
 
@@ -1089,5 +1435,20 @@ public class GuiBetterLevelMaintainer extends GuiContainer {
         }
 
         field.setCursorPosition(Math.min(newCursor, formatted.length()));
+    }
+
+    // ==================== JEI INTEGRATION ====================
+
+    /**
+     * Returns areas that JEI should not overlap with its panels.
+     * Used for the style toggle button on the left side of the GUI.
+     */
+    public List<Rectangle> getJEIExclusionArea() {
+        List<Rectangle> areas = new ArrayList<>();
+
+        // Style toggle button
+        areas.add(new Rectangle(styleButtonX, styleButtonY, STYLE_BUTTON_SIZE, STYLE_BUTTON_SIZE));
+
+        return areas;
     }
 }
